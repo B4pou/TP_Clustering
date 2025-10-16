@@ -4,9 +4,15 @@ import numpy as np
 from scipy.io import arff
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+import sys
 
 
-data, _ = arff.loadarff('artificial/donutcurves.arff')
+fichier = "artificial/2d-10c.arff"
+if len(sys.argv) >= 3 and os.path.isfile(sys.argv[2]) :
+    fichier = sys.argv[2]
+
+data, _ = arff.loadarff(fichier)
 df = pd.DataFrame(data)
 df = df.iloc[:, :2]
 
@@ -19,17 +25,22 @@ DB_results = []
 
 nb_cluster = range(2, 16)
 
+
 def norm(results, invert=False) :
     maxi = max(results)
     mini = min(results)
+
+    if maxi == mini:
+        return [0.0 for _ in results]
 
     if invert :
         return [1 - (res-mini)/(maxi-mini) for res in results]
     
     return [(res-mini)/(maxi-mini) for res in results]
 
+
 def plot(best_clustering) :
-    fig, axes = plt.subplots(2, 2, figsize=(8, 12))  # 3 lignes, 1 colonne
+    fig, axes = plt.subplots(2, 2, figsize=(8, 12))  # 2 lignes, 2 colonnes
 
     # --- 1. Silhouette ---
     axes[0, 0].plot(nb_cluster, silhouette_results, marker='o', color='blue', label='Silhouette')
@@ -56,12 +67,22 @@ def plot(best_clustering) :
     axes[1, 0].grid(True)
 
     # --- 4. Best Clustering ---
-    labels = clustering_results[best_clustering].labels_
-    centers = clustering_results[best_clustering].cluster_centers_
+    clustering = clustering_results[best_clustering]
+    labels = clustering.labels_
+
+    # Calcul des centres à partir des labels si il n'y a pas cluster_centers_ (pour Agglomerative)
+    if hasattr(clustering, 'cluster_centers_'):
+        centers = clustering.cluster_centers_
+    else:
+        unique_labels = np.unique(labels)
+        # On ignore le potentiel label -1 (bruit)
+        centers = np.array([X[labels == lab].mean(axis=0) for lab in unique_labels if lab != -1])
 
     axes[1, 1].scatter(X[:, 0], X[:, 1], c=labels, cmap='viridis', marker='o')
-    axes[1, 1].scatter(centers[:, 0], centers[:, 1], c='red', s=200, marker='X', label='Centres')
-    axes[1, 1].set_title(f"K-Means avec {best_clustering + 2} clusters")
+    if centers.size > 0:
+        axes[1, 1].scatter(centers[:, 0], centers[:, 1], c='red', s=200, marker='X', label='Centres')
+
+    axes[1, 1].set_title(f"{type(clustering).__name__} avec {nb_cluster[best_clustering]} clusters")
     axes[1, 1].set_xlabel('X')
     axes[1, 1].set_ylabel('Y')
     axes[1, 1].legend()
@@ -69,6 +90,7 @@ def plot(best_clustering) :
 
     plt.tight_layout()
     plt.show()
+
 
 def clusterise(method) :
     for i in nb_cluster :
@@ -80,7 +102,11 @@ def clusterise(method) :
 
             # --- Clustering hiérarchique ---
             case "Agglomerative" :
-                clustering = AgglomerativeClustering(n_clusters=i, linkage='ward').fit(X)
+                linkage = 'ward'
+                if len(sys.argv) >= 4 and sys.argv[3] in ['ward', 'complete', 'average', 'single'] :
+                    linkage = sys.argv[3]
+
+                clustering = AgglomerativeClustering(n_clusters=i, linkage=linkage).fit(X)
 
             # --- DBSCAN ---
             case "DBScan" :
@@ -96,15 +122,18 @@ def clusterise(method) :
         
 
         clustering_results.append(clustering)
-        silhouette_results.append(silhouette_score(X, clustering.labels_))
-        CAH_results.append(calinski_harabasz_score(X, clustering.labels_))
-        DB_results.append(davies_bouldin_score(X, clustering.labels_))
+
+        labels = clustering.labels_
+
+        silhouette_results.append(silhouette_score(X, labels))
+        CAH_results.append(calinski_harabasz_score(X, labels))
+        DB_results.append(davies_bouldin_score(X, labels))
+
 
     # Norm the results between 0 and 1
     silhouette_results_normed = norm(silhouette_results)
     CAH_results_normed = norm(CAH_results)
     DB_results_normed = norm(DB_results, True)
-
 
     # Choose the best nb_cluster
     average_results = [(silhouette_results_normed[i] + CAH_results_normed[i] + DB_results_normed[i])/3 for i in range(len(nb_cluster))]
@@ -113,4 +142,8 @@ def clusterise(method) :
     plot(best_clustering)
 
 
-clusterise("KMeans")
+method = "KMeans"
+if len(sys.argv) >= 2 and sys.argv[1] in ["KMeans", "Agglomerative", "DBScan", "HDBScan"] :
+    method = sys.argv[1]
+
+clusterise(method)
