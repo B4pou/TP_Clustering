@@ -1,5 +1,6 @@
 from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
+from sklearn.neighbors import NearestNeighbors
 import numpy as np
 from scipy.io import arff
 import pandas as pd
@@ -181,6 +182,23 @@ def run_agglomerative():
     plot_agglomerative(results_by_linkage)
 
 
+def find_elbow(k):
+    nbrs = NearestNeighbors(n_neighbors=k).fit(X)
+    distances, _ = nbrs.kneighbors(X)
+    distances = np.sort(distances[:, k-1])
+
+    plt.plot(distances)
+    plt.xlabel('Points triés par distance')
+    plt.ylabel(f'Distance au {k}-ème voisin')
+    plt.title('Méthode du coude pour choisir epsilon')
+    plt.show()
+
+
+def run_DBSCAN() :
+    find_elbow(5)
+    # clustering = DBSCAN(eps=0.5, min_samples=5).fit(X)
+
+
 def clusterise(method) :
     match method :
         # --- K-Means ---
@@ -193,7 +211,7 @@ def clusterise(method) :
 
         # --- DBSCAN ---
         case "DBScan" :
-            clustering = DBSCAN(eps=0.5, min_samples=5).fit(X)
+            run_DBSCAN()
 
         # --- HDBSCAN ---
         case "HDBScan" :
