@@ -16,6 +16,8 @@ Agglomerative :
 
 
 DBSCAN :
-    - eps -> distance max à la diagonale pour trouver le coude
+    - eps -> distance max à la diagonale pour trouver le coude :
+        (x,y) et (a,b) => (xa + yb = 0) => (a=1, b = -x/y)
+
     - min_samples
     - alogrithm ?

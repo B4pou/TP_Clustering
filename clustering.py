@@ -186,16 +186,40 @@ def find_elbow(k):
     nbrs = NearestNeighbors(n_neighbors=k).fit(X)
     distances, _ = nbrs.kneighbors(X)
     distances = np.sort(distances[:, k-1])
+    
+
+    vx, vy = len(distances), (distances[-1] - distances[0])
+    a, b = 1, -vx/vy
+
+    print(vx, vy, a, b)
+
+    coude = 0
+    max_delta = 0
+
+    for i in range(len(distances)) :
+        x = i
+        y = distances[i]
+
+        delta = abs(-(a*x + b*y)/(a*a + b*b)**0.5)
+
+        if delta > max_delta :
+            max_delta = delta
+            coude = x
+
+    print(coude)
 
     plt.plot(distances)
+    plt.plot([0, len(distances)], [distances[0], distances[-1]])
     plt.xlabel('Points triés par distance')
     plt.ylabel(f'Distance au {k}-ème voisin')
     plt.title('Méthode du coude pour choisir epsilon')
     plt.show()
 
+    return coude
+
 
 def run_DBSCAN() :
-    find_elbow(5)
+    eps = find_elbow(5)
     # clustering = DBSCAN(eps=0.5, min_samples=5).fit(X)
 
 
