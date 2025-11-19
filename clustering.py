@@ -192,8 +192,6 @@ def find_elbow(k):
             coude = x
     
 
-    print(f"Coude trouvé à l'index {coude}, distance = {round(distances[coude], 2)}")
-
     plt.plot(distances)
     plt.plot([0, len(distances)], [distances[0], distances[-1]], 'k--')
     plt.plot(coude, distances[coude], 'ro', label='Coude')
@@ -209,40 +207,23 @@ def find_elbow(k):
 def run_DBSCAN() :
     clustering_results, silhouette_results, CAH_results, DB_results = [], [], [], []
     coude = find_elbow(3)  # Données à N dimensions, k = 2N-1
+    eps = 2*coude
+    min_samples_values = [3, 4, 5, 6]
+    print('_'*100)
 
-    for eps in np.arange(coude, 3*coude, coude/4) :
-        print(f"\nDBSCAN avec eps = {round(eps, 3)}")
-        clustering = DBSCAN(eps=eps, min_samples=4).fit(X)
+    for min_sample in min_samples_values:
+        print("#"*25, end='', flush=True)
+        clustering = DBSCAN(eps=eps, min_samples=min_sample).fit(X)
         
         labels = clustering.labels_
 
-        if len(set(labels)) >= 2 :
-            clustering_results.append(clustering)
-            silhouette_results.append(silhouette_score(X, labels))
-            CAH_results.append(calinski_harabasz_score(X, labels))
-            DB_results.append(davies_bouldin_score(X, labels))
+        clustering_results.append(clustering)
+        silhouette_results.append(silhouette_score(X, labels))
+        CAH_results.append(calinski_harabasz_score(X, labels))
+        DB_results.append(davies_bouldin_score(X, labels))
+        
 
-        labels = clustering.labels_
-
-        # Calcul des centres à partir des labels
-        unique_labels = np.unique(labels)
-        centers = np.array([X[labels == lab].mean(axis=0) for lab in unique_labels if lab != -1])
-
-        plt.scatter(X[:, 0], X[:, 1], c=labels, cmap='viridis', marker='o')
-        if centers.size > 0:
-            plt.scatter(centers[:, 0], centers[:, 1], c='red', s=200, marker='X', label='Centres')
-
-        plt.title(f"{type(clustering).__name__}")
-        plt.xlabel('X')
-        plt.ylabel('Y')
-        plt.legend()
-        plt.grid(True)
-
-        plt.tight_layout()
-        plt.show()
-            
-
-    print()
+    print()  
     silhouette_normed = norm(silhouette_results)
     CAH_normed = norm(CAH_results)
     DB_normed = norm(DB_results, True)
@@ -250,10 +231,39 @@ def run_DBSCAN() :
     average_scores = [(silhouette_normed[i] + CAH_normed[i] + DB_normed[i]) / 3 for i in range(len(clustering_results))]
     best_clustering_index = average_scores.index(max(average_scores))
 
-    plot_DBSCAN(best_clustering_index, clustering_results)
+    plot_DBSCAN(best_clustering_index, clustering_results, eps, min_samples_values)
 
     
-def plot_DBSCAN(best_clustering_index, clustering_results) :
+def plot_DBSCAN(best_clustering_index, clustering_results, eps, min_samples_values) :
+    print(f"\nPlotting DBSCAN results")
+    
+    # Affichage : une seule figure avec 4 sous-graphes (2x2)
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    axes = axes.flatten()
+
+    for idx, clustering in enumerate(clustering_results):
+        ax = axes[idx]
+        labels = clustering.labels_
+        
+        unique_labels = np.unique(labels)
+        centers = np.array([X[labels == lab].mean(axis=0) for lab in unique_labels if lab != -1])
+
+        ax.scatter(X[:, 0], X[:, 1], c=labels, cmap='viridis', marker='o', s=30, alpha=0.7)
+        if centers.size > 0:
+            ax.scatter(centers[:, 0], centers[:, 1], c='red', s=150, marker='X', label='Centres')
+
+        ax.set_title(f"DBSCAN (eps={round(eps, 2)}, min_samples={min_samples_values[idx]}) : {len(np.unique(labels))-1} clusters")
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.legend()
+        ax.grid(True)
+
+    plt.tight_layout()
+    plt.subplots_adjust(left=0.05, wspace=0.15, hspace=0.25)
+    plt.show()
+
+
+    # Affichage du meilleur clustering dans une figure séparée
     clustering = clustering_results[best_clustering_index]
     labels = clustering.labels_
 
@@ -265,7 +275,7 @@ def plot_DBSCAN(best_clustering_index, clustering_results) :
     if centers.size > 0:
         plt.scatter(centers[:, 0], centers[:, 1], c='red', s=200, marker='X', label='Centres')
 
-    plt.title(f"{type(clustering).__name__} avec {best_clustering_index+2} clusters")
+    plt.title(f"Meilleure configuration : eps={round(eps, 2)} et min_samples={min_samples_values[best_clustering_index]}")
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.legend()
@@ -309,7 +319,7 @@ if __name__ == "__main__" :
     if len(sys.argv) >= 3 and os.path.isfile("artificial/" + sys.argv[2] + ".arff") :
         fichier = sys.argv[2]
 
-    print(f"Chargement des données depuis le fichier '{fichier}' et utilisation de la méthode '{method}'")
+    print(f"Chargement des données depuis le fichier '{fichier}' et utilisation de la méthode '{method}'\n")
     data, _ = arff.loadarff("artificial/" + fichier + ".arff")
     df = pd.DataFrame(data).iloc[:, :2]
     X = df.values
