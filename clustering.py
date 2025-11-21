@@ -1,6 +1,7 @@
 from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 from sklearn.neighbors import NearestNeighbors
+import hdbscan
 import numpy as np
 from scipy.io import arff
 import pandas as pd
@@ -217,10 +218,11 @@ def run_DBSCAN() :
         
         labels = clustering.labels_
 
-        clustering_results.append(clustering)
-        silhouette_results.append(silhouette_score(X, labels))
-        CAH_results.append(calinski_harabasz_score(X, labels))
-        DB_results.append(davies_bouldin_score(X, labels))
+        if len(set(labels)) >= 2 :
+            clustering_results.append(clustering)
+            silhouette_results.append(silhouette_score(X, labels))
+            CAH_results.append(calinski_harabasz_score(X, labels))
+            DB_results.append(davies_bouldin_score(X, labels))
         
 
     print()  
@@ -285,24 +287,63 @@ def plot_DBSCAN(best_clustering_index, clustering_results, eps, min_samples_valu
     plt.show()
 
 
+def run_HDBSCAN():
+    clustering_results, silhouette_results, CAH_results, DB_results = [], [], [], []
+    eps_values = np.arange(0.05, 3, 0.05)
+    print('_'*(100//len(eps_values)*len(eps_values)))
+
+    for epsilon in eps_values:
+        clustering = hdbscan.HDBSCAN(min_cluster_size=15, min_samples=4, cluster_selection_epsilon=float(epsilon)).fit(X)
+        labels = clustering.labels_
+
+        if len(set(labels)) >= 2 :
+            clustering_results.append(clustering)
+            silhouette_results.append(silhouette_score(X, labels))
+            CAH_results.append(calinski_harabasz_score(X, labels))
+            DB_results.append(davies_bouldin_score(X, labels))
+            #plot_HDBSCAN(clustering)
+        
+        print(100//len(eps_values)*'#', end='', flush=True)
+
+    print()
+    silhouette_normed = norm(silhouette_results)
+    CAH_normed = norm(CAH_results)
+    DB_normed = norm(DB_results, True)
+
+    average_scores = [(silhouette_normed[i] + CAH_normed[i] + DB_normed[i]) / 3 for i in range(len(clustering_results))]
+    best_clustering_index = average_scores.index(max(average_scores))
+    print(average_scores)
+    plot_HDBSCAN(clustering_results[best_clustering_index], eps_values[best_clustering_index])
+
+
+def plot_HDBSCAN(clustering, epsilon):
+    print(f"\nPlotting HDBSCAN results")
+    labels = clustering.labels_
+    centers = np.array([X[labels == lab].mean(axis=0) for lab in np.unique(labels) if lab != -1])
+    plt.scatter(X[:, 0], X[:, 1], c=labels, cmap='viridis', marker='o')
+    if centers.size > 0:
+        plt.scatter(centers[:, 0], centers[:, 1], c='red', s=150, marker='X', label='Centres')
+    plt.title(f"HDBSCAN clustering with epsilon={round(epsilon, 2)}")
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
 def clusterise(method) :
     match method :
-        # --- K-Means ---
         case "KMeans" :
             run_kMeans()
 
-        # --- Clustering hiérarchique ---
         case "Agglomerative" :
             run_agglomerative()
 
-        # --- DBSCAN ---
         case "DBScan" :
             run_DBSCAN()
 
-        # --- HDBSCAN ---
         case "HDBScan" :
-            # clustering = hdbscan.HDBSCAN(min_cluster_size=5).fit(X)
-            print("HDBScan non implémenté.")
+            run_HDBSCAN() 
 
         case _ :
             raise ValueError(f"Méthode de clustering inconnue : {method}")
