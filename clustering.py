@@ -53,7 +53,7 @@ def run_kMeans():
 
 
 def plot_kMeans(best_clustering, clustering_results, silhouette_results, CAH_results, DB_results) :
-    print(f"\nPlotting K-Means results")
+    print(f"\nAffichage des résultats de K-Means")
 
     _, axes = plt.subplots(2, 2, figsize=(8, 12))  # 2 lignes, 2 colonnes
     
@@ -91,7 +91,7 @@ def plot_kMeans(best_clustering, clustering_results, silhouette_results, CAH_res
     if centers.size > 0:
         axes[1, 1].scatter(centers[:, 0], centers[:, 1], c='red', s=200, marker='X', label='Centres')
 
-    axes[1, 1].set_title(f"{type(clustering).__name__} avec {best_clustering+2} clusters")
+    axes[1, 1].set_title(f"K-Means avec {best_clustering+2} clusters")
     axes[1, 1].set_xlabel('X')
     axes[1, 1].set_ylabel('Y')
     axes[1, 1].legend()
@@ -106,7 +106,7 @@ def run_agglomerative():
     results_by_linkage = {}
 
     for linkage in ['ward', 'complete', 'average', 'single']:
-        print(f"\nTesting {linkage} linkage")
+        print(f"\nTest du linkage {linkage}")
         print('_'*(100//NB_CLUSTER_SIZES_TO_TEST*NB_CLUSTER_SIZES_TO_TEST))
         clustering_results, silhouette_results, CAH_results, DB_results = [], [], [], []
 
@@ -139,7 +139,7 @@ def run_agglomerative():
 
 
 def plot_agglomerative(clustering_results_by_linkage) :
-    print(f"\nPlotting Agglomerative Clustering results")
+    print(f"\nAffichage des résultats du clustering hiérarchique")
 
     _, axes = plt.subplots(2, 2, figsize=(12, 10))
     axes = axes.flatten()
@@ -156,7 +156,7 @@ def plot_agglomerative(clustering_results_by_linkage) :
         if centers.size > 0:
             ax.scatter(centers[:, 0], centers[:, 1], c='red', s=150, marker='X', label='Centres')
         
-        ax.set_title(f"Linkage: '{linkage}' (k={best_k})")
+        ax.set_title(f"{best_k} clusters trouvés avec le linkage '{linkage}'")
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.legend()
@@ -237,7 +237,7 @@ def run_DBSCAN() :
 
     
 def plot_DBSCAN(best_clustering_index, clustering_results, eps, min_samples_values) :
-    print(f"\nPlotting DBSCAN results")
+    print(f"\nAffichage des résultats de DB-Scan")
     
     # Affichage : une seule figure avec 4 sous-graphes (2x2)
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
@@ -254,7 +254,7 @@ def plot_DBSCAN(best_clustering_index, clustering_results, eps, min_samples_valu
         if centers.size > 0:
             ax.scatter(centers[:, 0], centers[:, 1], c='red', s=150, marker='X', label='Centres')
 
-        ax.set_title(f"DBSCAN (eps={round(eps, 2)}, min_samples={min_samples_values[idx]}) : {len(np.unique(labels))-1} clusters")
+        ax.set_title(f"DB-Scan avec eps={round(eps, 2)} et min_samples={min_samples_values[idx]} : {len(np.unique(labels))-1} clusters")
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.legend()
@@ -277,7 +277,7 @@ def plot_DBSCAN(best_clustering_index, clustering_results, eps, min_samples_valu
     if centers.size > 0:
         plt.scatter(centers[:, 0], centers[:, 1], c='red', s=200, marker='X', label='Centres')
 
-    plt.title(f"Meilleure configuration : eps={round(eps, 2)} et min_samples={min_samples_values[best_clustering_index]}")
+    plt.title(f"Meilleure configuration de DB-Scan : eps={round(eps, 2)} et min_samples={min_samples_values[best_clustering_index]}")
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.legend()
@@ -301,7 +301,6 @@ def run_HDBSCAN():
             silhouette_results.append(silhouette_score(X, labels))
             CAH_results.append(calinski_harabasz_score(X, labels))
             DB_results.append(davies_bouldin_score(X, labels))
-            #plot_HDBSCAN(clustering)
         
         print(100//len(eps_values)*'#', end='', flush=True)
 
@@ -312,18 +311,19 @@ def run_HDBSCAN():
 
     average_scores = [(silhouette_normed[i] + CAH_normed[i] + DB_normed[i]) / 3 for i in range(len(clustering_results))]
     best_clustering_index = average_scores.index(max(average_scores))
-    print(average_scores)
     plot_HDBSCAN(clustering_results[best_clustering_index], eps_values[best_clustering_index])
 
 
 def plot_HDBSCAN(clustering, epsilon):
-    print(f"\nPlotting HDBSCAN results")
+    print(f"\nAffichage des résultats de HDB-Scan")
     labels = clustering.labels_
     centers = np.array([X[labels == lab].mean(axis=0) for lab in np.unique(labels) if lab != -1])
+
     plt.scatter(X[:, 0], X[:, 1], c=labels, cmap='viridis', marker='o')
     if centers.size > 0:
         plt.scatter(centers[:, 0], centers[:, 1], c='red', s=150, marker='X', label='Centres')
-    plt.title(f"HDBSCAN clustering with epsilon={round(epsilon, 2)}")
+
+    plt.title(f"Clustering HDB-Scan avec eps={round(epsilon, 2)}")
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.grid(True)
@@ -345,19 +345,25 @@ def clusterise(method) :
         case "HDBScan" :
             run_HDBSCAN() 
 
+        case "all" :
+            run_kMeans()
+            run_agglomerative()
+            run_DBSCAN()
+            run_HDBSCAN()
+
         case _ :
             raise ValueError(f"Méthode de clustering inconnue : {method}")
 
 
 if __name__ == "__main__" :
-    NB_CLUSTER_SIZES_TO_TEST = 8  # Pour K-Means et Clustering Hiérarchique
+    NB_CLUSTER_SIZES_TO_TEST = 25  # Pour K-Means et Clustering Hiérarchique (seuls D31.arff et fourty.arff ont plus de 25 clusters)
 
     method = "KMeans"
-    if len(sys.argv) >= 2 and sys.argv[1] in ["KMeans", "Agglomerative", "DBScan", "HDBScan"] :
+    if len(sys.argv) >= 2:
         method = sys.argv[1]
 
     fichier = "2d-20c-no0"
-    if len(sys.argv) >= 3 and os.path.isfile("artificial/" + sys.argv[2] + ".arff") :
+    if len(sys.argv) >= 3:
         fichier = sys.argv[2]
 
     print(f"Chargement des données depuis le fichier '{fichier}' et utilisation de la méthode '{method}'\n")
