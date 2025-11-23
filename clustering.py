@@ -217,7 +217,6 @@ def run_DBSCAN() :
         clustering = DBSCAN(eps=eps, min_samples=min_sample).fit(X)
         
         labels = clustering.labels_
-
         if len(set(labels)) >= 2 :
             clustering_results.append(clustering)
             silhouette_results.append(silhouette_score(X, labels))
@@ -225,7 +224,12 @@ def run_DBSCAN() :
             DB_results.append(davies_bouldin_score(X, labels))
         
 
-    print()  
+    print()
+
+    if len(clustering_results) == 0 :
+        print("Aucun clustering valide n'a été trouvé avec DB-Scan")
+        return
+    
     silhouette_normed = norm(silhouette_results)
     CAH_normed = norm(CAH_results)
     DB_normed = norm(DB_results, True)
